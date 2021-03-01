@@ -1,0 +1,61 @@
+version: '3'
+
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379:6379
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_DB=today-db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+    environment:
+      - cluster.name=docker-cluster
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    volumes:
+      - /docker/elasticsearch.yml
+    ports:
+      - 9200:9200
+  nginx:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./docker/nginx/Dockerfile
+    ports:
+      - 80:80
+    volumes:
+      - static_volume:/code/backend/staticfiles
+      - ./docker/nginx/development:/etc/nginx/conf.d
+    depends_on:
+      - backend
+  backend:
+    build:
+      context: .
+      dockerfile: ./docker/backend/Dockerfile
+    container_name: today_backend
+    volumes:
+      - .:/code
+      - static_volume:/code/backend/staticfiles
+    expose:
+        - 8000
+    depends_on:
+        - db
+  celery:
+    build:
+      context: .
+      dockerfile: ./docker/backend/Dockerfile
+    entrypoint: /code/docker/backend/celery-entrypoint.sh
+    volumes:
+      - .:/code
+    depends_on:
+      - db
+      - redis
+
+volumes:
+    static_volume: {}

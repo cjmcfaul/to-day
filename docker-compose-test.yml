@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_DB=today-db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  nginx:
+    build:
+      context: .
+      dockerfile: ./docker/nginx/Dockerfile
+    ports:
+      - 3000:3000
+    volumes:
+      - .:/code
+      - static_volume:/code/backend/staticfiles
+    depends_on:
+      - backend
+  backend:
+    build:
+      context: .
+      dockerfile: ./docker/backend/Dockerfile
+    container_name: today_backend
+    entrypoint: /code/docker/backend/wsgi-entrypoint.sh
+    volumes:
+      - .:/code
+      - static_volume:/code/backend/staticfiles
+    ports:
+        - 8000:8000
+    depends_on:
+        - db
+
+volumes:
+    static_volume: {}
